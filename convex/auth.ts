@@ -4,7 +4,7 @@ import GitHub from "@auth/core/providers/github";
 import Google from "@auth/core/providers/google";
 
 const CustomPassword = Password({
-  profile(params) {
+  profile(params: any) {
     return {
       email: params.email as string,
       name: params.name as string,
