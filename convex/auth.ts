@@ -3,9 +3,7 @@ import { Password } from "@convex-dev/auth/providers/Password";
 import GitHub from "@auth/core/providers/github";
 import Google from "@auth/core/providers/google";
 
-import { DataModel } from "./_generated/dataModel";
-
-const CustomPassword = Password<DataModel>({
+const CustomPassword = Password({
   profile(params) {
     return {
       email: params.email as string,
