@@ -14,8 +14,8 @@ type Options = {
 };
 
 export const useRemoveWorkspace = () => {
-  const [data, setData] = useState<ResponseType>(null);
-  const [error, setError] = useState<Error | null>(null);
+  const [, setData] = useState<ResponseType>(null);
+  const [, setError] = useState<Error | null>(null);
   const [status, setStatus] = useState<
     "pending" | "success" | "error" | "settled" | null
   >(null);
