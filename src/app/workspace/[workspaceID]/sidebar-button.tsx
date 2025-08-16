@@ -5,7 +5,7 @@ import { IconType } from "react-icons";
 
 interface SidebarButtonProps {
   icon: LucideIcon | IconType;
-  label: String;
+  label: string;
   isActive?: boolean;
 }
 

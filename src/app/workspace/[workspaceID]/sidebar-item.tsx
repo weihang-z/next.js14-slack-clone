@@ -4,7 +4,6 @@ import { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { IconType } from "react-icons";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Id } from "../../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 
 const sidebarItemVariant = cva(

@@ -18,7 +18,7 @@ export const WorkspaceSwitcher = () => {
   const router = useRouter();
 
   const workspaceId = useWorkspaceId();
-  const [open, setOpen] = useCreateWorkspaceModal();
+  const [, setOpen] = useCreateWorkspaceModal();
 
   const { data: workspaces, isLoading: workspacesLoading } = useGetWorkspaces();
   const { data: workspace, isLoading: workspaceLoading } = useGetWorkspace({

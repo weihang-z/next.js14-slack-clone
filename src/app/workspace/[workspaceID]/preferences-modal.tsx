@@ -3,7 +3,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -66,7 +65,7 @@ export const PreferencesModal = ({
   };
 
   const handleEdit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault;
+    e.preventDefault();
 
     updateWorkspace(
       { id: workspaceId, name: value },

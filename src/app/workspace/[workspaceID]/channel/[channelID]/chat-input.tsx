@@ -7,7 +7,6 @@ import { useChannelId } from "@/hooks/use-channel-id";
 import { toast } from "sonner";
 import { useGenerateUploadURL } from "@/features/upload/api/use-generate-upload-url";
 import { Id } from "../../../../../../convex/_generated/dataModel";
-import { Result } from "postcss";
 
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
@@ -72,8 +71,8 @@ export const ChatInput = ({ placeholder }: ChatInputProps) => {
 
       await createMessage(values, { throwError: true });
       setEditorKey((prevKey) => prevKey + 1);
-    } catch (error) {
-      toast.error("Failed to send message");
+      } catch (_error) {
+    toast.error("Failed to send message");
     } finally {
       setIsPending(false);
       editorRef?.current?.enable(true);

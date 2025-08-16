@@ -18,7 +18,7 @@ type Options = {
 
 export const useCreateOrGetConversation = () => {
   const [data, setData] = useState<ResponseType>(null);
-  const [error, setError] = useState<Error | null>(null);
+  const [_error, setError] = useState<Error | null>(null);
   const [status, setStatus] = useState<
     "pending" | "success" | "error" | "settled" | null
   >(null);

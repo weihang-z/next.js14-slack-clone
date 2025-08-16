@@ -6,7 +6,6 @@ import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { toast } from "sonner";
 import { useGenerateUploadURL } from "@/features/upload/api/use-generate-upload-url";
 import { Id } from "../../../../../../convex/_generated/dataModel";
-import { Result } from "postcss";
 
 const Editor = dynamic(() => import("@/components/editor"), { ssr: false });
 
@@ -71,7 +70,7 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
 
       await createMessage(values, { throwError: true });
       setEditorKey((prevKey) => prevKey + 1);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to send message");
     } finally {
       setIsPending(false);

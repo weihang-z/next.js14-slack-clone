@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useWorkspaceId } from "@/hooks/use-workspace-id";
 import { useGetWorkspace } from "@/features/workspace/api/use-get-workspace";
 import { useCreateChanneleModal } from "@/features/channels/store/use-create-channel-modal";

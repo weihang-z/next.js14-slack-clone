@@ -13,8 +13,8 @@ type Options = {
 };
 
 export const useGenerateUploadURL = () => {
-  const [data, setData] = useState<ResponseType>(null);
-  const [error, setError] = useState<Error | null>(null);
+  const [_data, setData] = useState<ResponseType>(null);
+  const [_error, setError] = useState<Error | null>(null);
   const [status, setStatus] = useState<
     "pending" | "success" | "error" | "settled" | null
   >(null);
@@ -27,7 +27,7 @@ export const useGenerateUploadURL = () => {
   const mutation = useMutation(api.upload.generateUploadURL);
 
   const mutate = useCallback(
-    async (_values: {}, options?: Options) => {
+    async (_values: Record<string, never>, options?: Options) => {
       try {
         setData(null);
         setError(null);

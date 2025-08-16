@@ -8,7 +8,7 @@ import {
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 
 interface HintProps {
-  label: String;
+  label: string;
   children: React.ReactNode;
   side?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";

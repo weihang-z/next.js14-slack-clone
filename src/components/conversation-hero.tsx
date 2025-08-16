@@ -1,5 +1,4 @@
 import { AvatarFallback } from "@radix-ui/react-avatar";
-import { format } from "date-fns/format";
 import { Avatar, AvatarImage } from "./ui/avatar";
 
 interface ConversationHeroProps {
