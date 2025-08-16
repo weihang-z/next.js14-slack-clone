@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
 import { useCallback, useMemo, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
-import { Id } from "../../../../convex/_generated/dataModel";
+// no-op
 
 type ResponseType = string | null;
 
@@ -13,8 +13,8 @@ type Options = {
 };
 
 export const useGenerateUploadURL = () => {
-  const [_data, setData] = useState<ResponseType>(null);
-  const [_error, setError] = useState<Error | null>(null);
+  const [data, setData] = useState<ResponseType>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [status, setStatus] = useState<
     "pending" | "success" | "error" | "settled" | null
   >(null);
