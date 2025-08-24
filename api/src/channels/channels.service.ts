@@ -60,7 +60,7 @@ export class ChannelsService {
 
     await this.prisma.channel.update({
       where: { id: channelId },
-      data: { name: updateChannelDto.name },
+      data: { name: updateChannelDto.name.replace(/\s+/g, '-') },
     });
     return channelId;
   }
@@ -72,8 +72,10 @@ export class ChannelsService {
     if (!cuurentMember || cuurentMember.role !== 'admin')
       throw new ForbiddenException();
 
-    await this.prisma.message.deleteMany({ where: { channelId } });
-    await this.prisma.channel.delete({ where: { channelId } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.prisma.message.deleteMany({ where: { channelId } });
+      await tx.prisma.channel.delete({ where: { channelId } });
+    });
     return channelId;
   }
 }

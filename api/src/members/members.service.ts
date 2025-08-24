@@ -1,15 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { CreateMemberDto } from './dto/create-member.dto';
-import { UpdateMemberDto } from './dto/update-member.dto';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class MembersService {
   constructor(private prisma: PrismaService) {}
 
-  create(createMemberDto: CreateMemberDto) {
-    return 'This action adds a new member';
-  }
 
   async getAll(workspaceId: string, userId: string) {
     const members = await this.prisma.member.findMany({
@@ -21,11 +17,18 @@ export class MembersService {
       },
     });
 
-    return members; // each member now has member.user with typed fields
+    return members;
   }
 
   async getById(id: string, userId: string) {
-    const member = await this.prisma.member.findUnique({ where: { id } });
+    const member = await this.prisma.member.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { id: true, email: true, name: true, image: true },
+        },
+      },
+    });
     if (!member) return null;
 
     const current = await this.prisma.member.findUnique({
@@ -35,27 +38,43 @@ export class MembersService {
     });
     if (!current) return null;
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: member.userId },
+    return member;
+  }
+
+  async updateRole(workspaceId: string, id: string, role: 'admin' | 'member', userId: string) {
+    const currentMember = await this.prisma.member.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
     });
-    if (!user) return null;
+    if (!currentMember || currentMember.role !== 'admin') throw new ForbiddenException();
 
-    return {
-      ...member,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: user.image,
-      },
-    };
+    await this.prisma.member.update({
+      where: { id },
+      data: { role },
+    });
+
+    return id;
   }
 
-  update(id: number, updateMemberDto: UpdateMemberDto) {
-    return `This action updates a #${id} member`;
-  }
+  async remove(workspaceId: string, id: string, userId: string) {
+    const currentMember = await this.prisma.member.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
+    });
+    if (!currentMember || currentMember.role !== 'admin') throw new ForbiddenException();
 
-  remove(id: number) {
-    return `This action removes a #${id} member`;
+    const target = await this.prisma.member.findUnique({ where: { id } });
+    if (!target || target.workspaceId !== workspaceId) {
+      throw new NotFoundException('Member not found');
+    }
+
+    await this.prisma.$transaction(async (tx: PrismaClient) => {
+      await tx.reaction.deleteMany({ where: { memberId: id } });
+      await tx.message.deleteMany({ where: { memberId: id } });
+      await tx.conversation.deleteMany({
+        where: { OR: [{ memberOneId: id }, { memberTwoId: id }] },
+      });
+      await tx.member.delete({ where: { id } });
+    });
+
+    return id;
   }
 }
