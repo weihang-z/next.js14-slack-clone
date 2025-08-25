@@ -9,10 +9,24 @@ import { MessagesModule } from './messages/messages.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { ReactionsModule } from './reactions/reactions.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaService } from './prisma/prisma.service';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [UsersModule, WorkspacesModule, MembersModule, ChannelsModule, MessagesModule, ConversationsModule, ReactionsModule, PrismaModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    UsersModule,
+    WorkspacesModule,
+    MembersModule,
+    ChannelsModule,
+    MessagesModule,
+    ConversationsModule,
+    ReactionsModule,
+    PrismaModule,
+    AuthModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [PrismaService],
 })
 export class AppModule {}
