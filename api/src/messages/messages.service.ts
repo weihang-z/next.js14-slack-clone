@@ -3,14 +3,8 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PrismaClient, Reaction, User } from '../../generated/prisma';
+import { GetListDto } from './dto/get-list.dto';
 
-type ListParams = {
-  channelId?: string;
-  conversationId?: string;
-  parentMessageId?: string;
-  limit?: number;
-  cursor?: string | null; // last message id from previous page
-};
 
 type ReactionView = {
   value: string;
@@ -43,10 +37,13 @@ export class MessagesService {
         id: true,
         workspaceId: true,
         memberId: true,
-        text: true,
-        image: true,
+        body: true,
+        imageUrl: true,
         createdAt: true,
-        updatedAt: true,
+        updatedAtMs: true,
+        channelId: true,
+        conversationId: true,
+        parentMessageId: true,
       },
     });
     if (!message || message.workspaceId !== workspaceId) {
@@ -64,7 +61,7 @@ export class MessagesService {
     }
 
     const reactions = await this.prisma.reaction.findMany({
-      where: { id },
+      where: { messageId: id },
       select: { value: true, memberId: true },
     });
 
@@ -89,7 +86,7 @@ export class MessagesService {
   async list(
     workspaceId: string,
     userId: string,
-    params: ListParams,
+    params: GetListDto,
   ): Promise<{
     page: Array<{
       id: string;
@@ -135,6 +132,29 @@ export class MessagesService {
         throw new NotFoundException('Parent message not found');
       }
       conversationId = parent.conversationId;
+    }
+
+    if (channelId) {
+      const ch = await this.prisma.channel.findUnique({
+        where: { id: channelId },
+        select: { workspaceId: true },
+      });
+      if (!ch || ch.workspaceId !== workspaceId) {
+        throw new ForbiddenException('Invalid channel for this workspace');
+      }
+    }
+
+    if (conversationId) {
+      const cv = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { workspaceId: true, memberOneId: true, memberTwoId: true },
+      });
+      if (!cv || cv.workspaceId !== workspaceId) {
+        throw new ForbiddenException('Invalid conversation for this workspace');
+      }
+      if (cv.memberOneId !== currentMember.id && cv.memberTwoId !== currentMember.id) {
+        throw new ForbiddenException('Not a participant of this conversation');
+      }
     }
 
     const rows = await this.prisma.message.findMany({
@@ -183,7 +203,6 @@ export class MessagesService {
         reactionsByMessage.set(msgId, views);
       }
 
-    // 5) Thread meta (count + latest child message)
     const threadMeta = new Map<string, ThreadMeta>();
     await Promise.all(
       messageIds.map(async (parentId) => {
@@ -203,13 +222,11 @@ export class MessagesService {
           threadCount: count,
           threadImageUrl: latest?.imageUrl ?? undefined,
           threadName: latest?.member?.user?.name ?? null,
-          // If you want to favor edits, you could prefer updatedAtMs here:
           threadTimestamp: latest?.createdAt ?? null,
         });
       }),
     );
 
-    // 6) Build page; hide messages with missing author member/user
     const page = rows
       .map((m) => {
         if (!m.member || !m.member.user) return null;
