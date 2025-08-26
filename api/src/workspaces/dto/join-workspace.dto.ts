@@ -1,6 +1,6 @@
 import { IsString } from "class-validator";
 
-export class CreateWorkspaceDto {
+export class JoinWorkspaceDto {
     @IsString()
-    name!: string;
+    joinCode!: string;
   }

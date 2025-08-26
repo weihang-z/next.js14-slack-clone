@@ -19,18 +19,17 @@ import { CurrentUserId } from 'src/auth/current-user.decorator';
 export class ChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}
 
-  @Post(':workspaceId')
+  @Post('create')
   create(
-    @Param('workspaceId') workspaceId: string,
-    @Body() createChannelDto: CreateChannelDto,
+    @Body() data: CreateChannelDto & { workspaceId: string },
     @CurrentUserId() userId: string,
   ) {
-    return this.channelsService.create(workspaceId, createChannelDto, userId);
+    return this.channelsService.create(data.workspaceId, data, userId);
   }
 
-  @Get(':workspaceId')
-  findAll(@Param('workspaceId') workspaceId: string) {
-    return this.channelsService.findAll(workspaceId);
+  @Post('list')
+  findAll(@Body() data: { workspaceId: string }) {
+    return this.channelsService.findAll(data.workspaceId);
   }
 
   @Get(':id')
@@ -38,27 +37,26 @@ export class ChannelsController {
     return this.channelsService.findOne(id);
   }
 
-  @Patch(':workspaceId/channels/:channelId')
+  @Patch(':id')
   update(
-    @Param('workspaceId') workspaceId: string,
-    @Param('channelId') channelId: string,
-    @Body() updateChannelDto: UpdateChannelDto,
+    @Param('id') channelId: string,
+    @Body() updateData: UpdateChannelDto & { workspaceId: string },
     @CurrentUserId() userId: string,
   ) {
     return this.channelsService.update(
-      workspaceId,
+      updateData.workspaceId,
       channelId,
-      updateChannelDto,
+      updateData,
       userId,
     );
   }
 
-  @Delete(':workspaceId/channels/:channelId')
+  @Delete(':id')
   remove(
-    @Param('workspaceId') workspaceId: string,
-    @Param('channelId') channelId: string,
+    @Param('id') channelId: string,
+    @Body() data: { workspaceId: string },
     @CurrentUserId() userId: string,
   ) {
-    return this.channelsService.remove(workspaceId, channelId, userId);
+    return this.channelsService.remove(data.workspaceId, channelId, userId);
   }
 }

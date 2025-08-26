@@ -9,13 +9,12 @@ import { IsString } from 'class-validator';
 export class ConversationsController {
   constructor(private service: ConversationsService) {}
 
-  @Post('/workspaces/:workspaceId')
+  @Post('create')
   @UseGuards(JwtAuthGuard)
   createOrGet(
-    @Param('workspaceId') workspaceId: string,
-    @Body() body: { memberId: string },
+    @Body() body: { workspaceId: string; memberId: string },
     @CurrentUserId() userId: string,
   ) {
-    return this.service.createOrGet(workspaceId, body.memberId, userId);
+    return this.service.createOrGet(body.workspaceId, body.memberId, userId);
   }
 }

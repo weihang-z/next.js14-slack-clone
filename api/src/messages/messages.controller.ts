@@ -11,28 +11,28 @@ import { GetListDto } from './dto/get-list.dto';
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
-  @Post(':workspaceId')
-  create(@Param('workspaceId') workspaceId: string, @Body() createMessageDto: CreateMessageDto, @CurrentUserId() userId: string) {
-    return this.messagesService.create(workspaceId, createMessageDto, userId);
+  @Post('create')
+  create(@Body() data: CreateMessageDto & { workspaceId: string }, @CurrentUserId() userId: string) {
+    return this.messagesService.create(data.workspaceId, data, userId);
   }
 
-  @Get(':workspaceId/:workspaceid')
-  getList(@Param('workspaceId') workspaceId: string, getListDto: GetListDto, @CurrentUserId() userId: string) {
-    return this.messagesService.list(workspaceId, userId, getListDto);
+  @Post('list')
+  getList(@Body() data: GetListDto & { workspaceId: string }, @CurrentUserId() userId: string) {
+    return this.messagesService.list(data.workspaceId, userId, data);
   }
 
-  @Get(':workspaceId/:workspaceid')
-  getById(@Param('workspaceid') workspaceid: string, messageId: string, @CurrentUserId() userId: string) {
-    return this.messagesService.getById(workspaceid, messageId,userId);
+  @Get(':id')
+  getById(@Param('id') messageId: string, @Body() data: { workspaceId: string }, @CurrentUserId() userId: string) {
+    return this.messagesService.getById(data.workspaceId, messageId, userId);
   }
 
-  @Patch()
-  update(id: string, @Body() updateMessageDto: UpdateMessageDto, @CurrentUserId() userId: string) {
-    return this.messagesService.update(id, updateMessageDto, userId);
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() data: UpdateMessageDto, @CurrentUserId() userId: string) {
+    return this.messagesService.update(id, data, userId);
   }
 
-  @Delete(':workspaceId/:workspaceid')
-  remove(@Param('workspaceid') workspaceId: string, messageId: string, @CurrentUserId() userId: string) {
-    return this.messagesService.remove(workspaceId, messageId, userId);
+  @Delete(':id')
+  remove(@Param('id') messageId: string, @Body() data: { workspaceId: string }, @CurrentUserId() userId: string) {
+    return this.messagesService.remove(data.workspaceId, messageId, userId);
   }
 }

@@ -14,12 +14,12 @@ import { CurrentUserId } from 'src/auth/current-user.decorator';
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  @Get(`workspace/:workspaceId`)
+  @Post('list')
   getAll(
-    @Param('workspaceId') workspaceId: string,
+    @Body() data: { workspaceId: string },
     @CurrentUserId() userId: string,
   ) {
-    return this.membersService.getAll(workspaceId, userId);
+    return this.membersService.getAll(data.workspaceId, userId);
   }
 
   @Get(':id')
@@ -27,18 +27,21 @@ export class MembersController {
     return this.membersService.getById(id, userId);
   }
 
-  @Patch('workspace/:workspaceId/member/:id')
+  @Patch(':id')
   update(
-    @Param('workspaceId') workspaceId: string,
     @Param('id') id: string,
-    @Body() role: 'admin' | 'member',
+    @Body() updateData: { workspaceId: string; role: 'admin' | 'member' },
     @CurrentUserId() userId: string,
   ) {
-    return this.membersService.updateRole(workspaceId, id, role, userId);
+    return this.membersService.updateRole(updateData.workspaceId, id, updateData.role, userId);
   }
 
-  @Delete('workspace/:workspaceId/member/:id')
-  remove(@Param('workspaceId') workspaceId: string, @Param('id') id: string, @CurrentUserId() userId: string) {
-    return this.membersService.remove(workspaceId, id, userId);
+  @Delete(':id')
+  remove(
+    @Param('id') id: string,
+    @Body() data: { workspaceId: string },
+    @CurrentUserId() userId: string
+  ) {
+    return this.membersService.remove(data.workspaceId, id, userId);
   }
 }
