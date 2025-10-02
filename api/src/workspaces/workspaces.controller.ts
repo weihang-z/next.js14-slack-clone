@@ -24,7 +24,11 @@ export class WorkspacesController {
 
   @Get(':id')
   async getById(@Param('id') id: string, @CurrentUserId() userId: string) {
-    return this.service.getById(id, userId);
+    const ws = await this.service.getById(id, userId);
+    if (!ws) {
+      return { id: null, name: null, joinCode: null, createdAt: null, updatedAt: null } as any;
+    }
+    return ws;
   }
 
   @Get(':id/info')

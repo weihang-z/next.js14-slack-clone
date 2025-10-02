@@ -1,10 +1,12 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { PrismaClient, Reaction, User } from '../../generated/prisma';
 import { GetListDto } from './dto/get-list.dto';
-
 
 type ReactionView = {
   value: string;
@@ -14,15 +16,44 @@ type ReactionView = {
 
 type ThreadMeta = {
   threadCount: number;
-  threadImageUrl?: string;
+  threadImage?: string | null;
   threadName?: string | null;
   threadTimestamp?: Date | null;
 };
 
+type MessageList = {
+  messages: Array<{
+    id: string;
+    body: string;
+    imageUrl?: string | null;
+    memberId: string;
+    workspaceId: string;
+    channelId: string | null;
+    conversationId: string | null;
+    parentMessageId: string | null;
+    createdAt: Date;
+    updatedAt?: string;
+    member: {
+      id: string;
+      userId: string;
+      user: {
+        id: string;
+        email: string;
+        name: string | null;
+        image: string | null;
+      };
+    };
+    reactions: ReactionView[];
+    threadCount: number;
+    threadName?: string | null;
+    threadTimestamp?: Date | null;
+  }>;
+  nextCursor: string | null;
+  hasMore: boolean;
+};
 
 @Injectable()
 export class MessagesService {
-
   constructor(private prisma: PrismaService) {}
 
   async getById(workspaceId: string, id: string, userId: string) {
@@ -33,30 +64,19 @@ export class MessagesService {
 
     const message = await this.prisma.message.findUnique({
       where: { id },
-      select: {
-        id: true,
-        workspaceId: true,
-        memberId: true,
-        body: true,
-        imageUrl: true,
-        createdAt: true,
-        updatedAtMs: true,
-        channelId: true,
-        conversationId: true,
-        parentMessageId: true,
-      },
     });
     if (!message || message.workspaceId !== workspaceId) {
       throw new NotFoundException('Message not found');
     }
 
+    // validate message is in the workspace
     const authorMember = await this.prisma.member.findUnique({
       where: { id: message.memberId },
       include: {
         user: { select: { id: true, email: true, name: true, image: true } },
       },
     });
-    if (!authorMember) {
+    if (!authorMember || authorMember.workspaceId !== workspaceId) {
       throw new NotFoundException('Message not found');
     }
 
@@ -71,51 +91,28 @@ export class MessagesService {
       mapByValue.get(r.value)!.add(r.memberId);
     }
 
-    const reactionsWithCount: ReactionView[] = Array.from(mapByValue.entries()).map(
-      ([value, set]) => ({ value, count: set.size, memberIds: Array.from(set) }),
-    );
+    const reactionsWithCount: ReactionView[] = Array.from(
+      mapByValue.entries(),
+    ).map(([value, set]) => ({
+      value,
+      count: set.size,
+      memberIds: Array.from(set),
+    }));
 
     return {
       ...message,
-      userId,
-      authorMember,
       reactions: reactionsWithCount,
-    }
+    };
   }
 
   async list(
     workspaceId: string,
     userId: string,
     params: GetListDto,
-  ): Promise<{
-    page: Array<{
-      id: string;
-      body: string;
-      imageUrl?: string | null;
-      memberId: string;
-      workspaceId: string;
-      channelId: string | null;
-      conversationId: string | null;
-      parentMessageId: string | null;
-      createdAt: Date;
-      updatedAtMs: bigint | null;
-      member: {
-        id: string;
-        userId: string;
-        user: { id: string; email: string; name: string | null; image: string | null };
-      };
-      user: User;
-      reactions: ReactionView[];
-      threadCount: number;
-      threadImageUrl?: string;
-      threadName?: string | null;
-      threadTimestamp?: Date | null;
-    }>;
-    nextCursor: string | null;
-    isDone: boolean;
-  }> {
-    const { channelId, parentMessageId, limit = 25 } = params;
-    let conversationId = params.conversationId ?? null;
+  ): Promise<MessageList> {
+    const limitNum = Math.max(1, Math.min(100, Number(params.limit) || 25));
+    const { channelId, parentMessageId } = params;
+    let conversationId = params.conversationId ?? undefined;
 
     const currentMember = await this.prisma.member.findUnique({
       where: { workspaceId_userId: { workspaceId, userId } },
@@ -131,7 +128,9 @@ export class MessagesService {
       if (!parent || parent.workspaceId !== workspaceId) {
         throw new NotFoundException('Parent message not found');
       }
-      conversationId = parent.conversationId;
+      if (parent.conversationId) {
+        conversationId = parent.conversationId;
+      }
     }
 
     if (channelId) {
@@ -152,32 +151,37 @@ export class MessagesService {
       if (!cv || cv.workspaceId !== workspaceId) {
         throw new ForbiddenException('Invalid conversation for this workspace');
       }
-      if (cv.memberOneId !== currentMember.id && cv.memberTwoId !== currentMember.id) {
+      if (
+        cv.memberOneId !== currentMember.id &&
+        cv.memberTwoId !== currentMember.id
+      ) {
         throw new ForbiddenException('Not a participant of this conversation');
       }
     }
 
+    const where: any = { workspaceId };
+    if (channelId !== undefined) where.channelId = channelId;
+    if (parentMessageId !== undefined) where.parentMessageId = parentMessageId;
+    if (conversationId !== undefined) where.conversationId = conversationId;
+
     const rows = await this.prisma.message.findMany({
-      where: {
-        workspaceId,
-        channelId: channelId ?? null,
-        parentMessageId: parentMessageId ?? null,
-        conversationId: conversationId ?? null,
-      },
+      where,
       include: {
         member: {
           include: {
-            user: { select: { id: true, email: true, name: true, image: true } },
+            user: {
+              select: { id: true, email: true, name: true, image: true },
+            },
           },
         },
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit,
-      skip: params.cursor ? 1 : 0,
+      orderBy: [{ createdAt: 'desc' }],
+      take: limitNum,
       cursor: params.cursor ? { id: params.cursor } : undefined,
+      skip: params.cursor ? 1 : 0,
     });
 
-    const messageIds = rows.map(r => r.id);
+    const messageIds = rows.map((r) => r.id);
 
     const reactionsRaw = messageIds.length
       ? await this.prisma.reaction.findMany({
@@ -186,21 +190,29 @@ export class MessagesService {
         })
       : [];
 
-    const reactionsByMessage = new Map<string, ReactionView[]>();
-    const buckets = new Map<string, Map<string, Set<string>>>(); // msgId -> value -> memberIds
+      const reactionsByMessage = new Map<string, ReactionView[]>();
+      const bucket = new Map<string, Map<string, Set<string>>>(); // messageIds -> value -> memberIds
+  
       for (const r of reactionsRaw) {
-        if (!buckets.has(r.messageId)) buckets.set(r.messageId, new Map());
-        const byValue = buckets.get(r.messageId)!;
-        if (!byValue.has(r.value)) byValue.set(r.value, new Set());
-        byValue.get(r.value)!.add(r.memberId);
+        if (!bucket.has(r.messageId))
+          bucket.set(r.messageId, new Map<string, Set<string>>());
+        const mapByValue = bucket.get(r.messageId)!;
+  
+        if (!mapByValue.has(r.value)) mapByValue.set(r.value, new Set<string>());
+        mapByValue.get(r.value)!.add(r.memberId);
       }
-      for (const [msgId, byValue] of buckets.entries()) {
-        const views: ReactionView[] = [];
-        for (const [value, members] of byValue.entries()) {
-          const memberIds = Array.from(members);
-          views.push({ value, count: memberIds.length, memberIds });
+  
+      for (const [messageId, mapByValue] of bucket.entries()) {
+        const reactions: ReactionView[] = [];
+        for (const [value, memberIds] of mapByValue) {
+          reactions.push({
+            value: value,
+            count: memberIds.size,
+            memberIds: Array.from(memberIds),
+          });
         }
-        reactionsByMessage.set(msgId, views);
+  
+        reactionsByMessage.set(messageId, reactions);
       }
 
     const threadMeta = new Map<string, ThreadMeta>();
@@ -216,20 +228,26 @@ export class MessagesService {
         const latest = await this.prisma.message.findFirst({
           where: { parentMessageId: parentId },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          include: { member: { include: { user: { select: { name: true } } } } },
+          include: {
+            member: { include: { user: { select: { name: true } } } },
+          },
         });
         threadMeta.set(parentId, {
           threadCount: count,
-          threadImageUrl: latest?.imageUrl ?? undefined,
           threadName: latest?.member?.user?.name ?? null,
+          threadImage: latest?.imageUrl ?? null,
           threadTimestamp: latest?.createdAt ?? null,
         });
       }),
     );
 
-    const page = rows
+    const messages = rows
       .map((m) => {
         if (!m.member || !m.member.user) return null;
+        const updatedAtStr =
+          m.updatedAtMs != null
+            ? new Date(Number(m.updatedAtMs)).toISOString()
+            : '';
         return {
           id: m.id,
           body: m.body,
@@ -240,37 +258,72 @@ export class MessagesService {
           conversationId: m.conversationId ?? null,
           parentMessageId: m.parentMessageId ?? null,
           createdAt: m.createdAt,
-          updatedAtMs: m.updatedAtMs ?? null,
+          updatedAt: updatedAtStr,
           member: m.member,
-          user: m.member.user,
           reactions: reactionsByMessage.get(m.id) ?? [],
-          ...threadMeta.get(m.id),
+          threadCount: threadMeta.get(m.id)?.threadCount ?? 0,
+          threadName: threadMeta.get(m.id)?.threadName ?? null,
+          threadTimestamp: threadMeta.get(m.id)?.threadTimestamp ?? null,
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
 
-    const nextCursor = page.length === limit ? page[page.length - 1].id : null;
-    return { page, nextCursor, isDone: nextCursor === null };
+    const nextCursor =
+      messages.length === limitNum ? messages[messages.length - 1].id : null;
+    return { messages, nextCursor, hasMore: nextCursor !== null };
   }
 
-  async create(workspaceId: string, createMessageDto: CreateMessageDto, userId: string) {
+  async create(
+    workspaceId: string,
+    createMessageDto: CreateMessageDto,
+    userId: string,
+  ) {
     const currentMember = await this.prisma.member.findUnique({
       where: { workspaceId_userId: { workspaceId, userId } },
     });
     if (!currentMember) throw new ForbiddenException('Member not found');
 
     const message = await this.prisma.message.create({
-      data: { ...createMessageDto, memberId: currentMember.id },
+      data: {
+        body: createMessageDto.body,
+        imageUrl: createMessageDto.imageUrl ?? null,
+        channelId: createMessageDto.channelId ?? null,
+        parentMessageId: createMessageDto.parentMessageId ?? null,
+        conversationId: createMessageDto.conversationId ?? null,
+        memberId: currentMember.id,
+        workspaceId,
+      },
     });
 
-    return message.id;
+    const response = {
+      id: message.id,
+      body: message.body,
+      imageUrl: message.imageUrl ?? undefined,
+      workspaceId: message.workspaceId,
+      channelId: message.channelId ?? undefined,
+      parentMessageId: message.parentMessageId ?? undefined,
+      conversationId: message.conversationId ?? undefined,
+      memberId: message.memberId,
+      createdAt: message.createdAt,
+      updatedAt:
+        message.updatedAtMs != null
+          ? new Date(Number(message.updatedAtMs)).toISOString()
+          : '',
+    };
+
+    return response;
   }
 
-  async update(workspaceId: string, updateMessageDto: UpdateMessageDto, userId: string) {
+  async update(
+    workspaceId: string,
+    updateMessageDto: UpdateMessageDto,
+    userId: string,
+  ) {
     const currentMember = await this.prisma.member.findUnique({
       where: { workspaceId_userId: { workspaceId, userId } },
     });
-    if (!currentMember || updateMessageDto.id !== currentMember.id) throw new ForbiddenException();
+    if (!currentMember || updateMessageDto.id !== currentMember.id)
+      throw new ForbiddenException();
 
     const message = await this.prisma.message.findUnique({
       where: { id: updateMessageDto.id },
@@ -282,24 +335,41 @@ export class MessagesService {
       data: { body: updateMessageDto.body },
     });
 
-    return newMessage.id;
+    const response = {
+      id: newMessage.id,
+      body: newMessage.body,
+      imageUrl: newMessage.imageUrl ?? undefined,
+      workspaceId: newMessage.workspaceId,
+      channelId: newMessage.channelId ?? undefined,
+      parentMessageId: newMessage.parentMessageId ?? undefined,
+      conversationId: newMessage.conversationId ?? undefined,
+      memberId: newMessage.memberId,
+      createdAt: newMessage.createdAt,
+      updatedAt:
+        newMessage.updatedAtMs != null
+          ? new Date(Number(newMessage.updatedAtMs)).toISOString()
+          : '',
+    };
+
+    return response;
   }
 
   async remove(workspaceId: string, id: string, userId: string) {
     const currentMember = await this.prisma.member.findUnique({
       where: { workspaceId_userId: { workspaceId, userId } },
     });
-    if (!currentMember || currentMember.id !== id) throw new ForbiddenException();
+    if (!currentMember || currentMember.id !== id)
+      throw new ForbiddenException();
 
     const message = await this.prisma.message.findUnique({
-      where: { id},
+      where: { id },
     });
     if (!message) throw new NotFoundException('Message not found');
 
-    await this.prisma.$transaction(async (tx: PrismaClient) => {
+    await this.prisma.$transaction(async (tx) => {
       await tx.reaction.deleteMany({ where: { messageId: id } });
       await tx.message.delete({ where: { id } });
     });
-    return id;
+    return { id };
   }
 }

@@ -3,6 +3,10 @@ import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class CreateMessageDto {
   @IsNotEmpty()
   @IsString()
+  workspaceId: string;
+
+  @IsNotEmpty()
+  @IsString()
   body: string;
 
   @IsOptional()

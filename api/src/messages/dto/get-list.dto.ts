@@ -1,6 +1,9 @@
 import { IsString, IsOptional, IsNumber } from "class-validator";
 
 export class GetListDto {
+    @IsString()
+    workspaceId: string;
+
     @IsOptional()
     @IsString()
     channelId: string;

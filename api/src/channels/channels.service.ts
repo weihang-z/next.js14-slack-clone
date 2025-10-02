@@ -4,8 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CreateChannelDto } from './dto/create-channel.dto';
-import { UpdateChannelDto } from './dto/update-channel.dto';
+import { CreateAndUpdateChannelDto } from './dto/create-channel.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -14,7 +13,7 @@ export class ChannelsService {
 
   async create(
     workspaceId: string,
-    createChannelDto: CreateChannelDto,
+    createChannelDto: CreateAndUpdateChannelDto,
     userId: string,
   ) {
     const member = await this.prisma.member.findUnique({
@@ -35,7 +34,7 @@ export class ChannelsService {
   }
 
   findAll(workspaceId: string) {
-    return this.prisma.channel.findAll({ where: { workspaceId } });
+    return this.prisma.channel.findMany({ where: { workspaceId } });
   }
 
   findOne(id: string) {
@@ -43,11 +42,11 @@ export class ChannelsService {
   }
 
   async update(
-    workspaceId: string,
     channelId: string,
-    updateChannelDto: UpdateChannelDto,
+    updateChannelDto: CreateAndUpdateChannelDto,
     userId: string,
   ) {
+    const {workspaceId} = updateChannelDto;
     const member = await this.prisma.member.findUnique({
       where: {
         workspaceId_userId: {
@@ -60,7 +59,11 @@ export class ChannelsService {
 
     await this.prisma.channel.update({
       where: { id: channelId },
-      data: { name: updateChannelDto.name.replace(/\s+/g, '-') },
+      data: { 
+        ...(updateChannelDto.name && { 
+          name: updateChannelDto.name.replace(/\s+/g, '-').toLowerCase() 
+        })
+      },
     });
     return channelId;
   }
@@ -73,8 +76,8 @@ export class ChannelsService {
       throw new ForbiddenException();
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.prisma.message.deleteMany({ where: { channelId } });
-      await tx.prisma.channel.delete({ where: { channelId } });
+      await tx.message.deleteMany({ where: { channelId } });
+      await tx.channel.delete({ where: { id: channelId } });
     });
     return channelId;
   }

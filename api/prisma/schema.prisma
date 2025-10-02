@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -24,6 +23,7 @@ model User {
   updatedAt DateTime  @updatedAt
   workspaces Workspace[] @relation("UserWorkspaces")
   members   Member[]
+  files     File[]
 }
 
 model Workspace {
@@ -39,6 +39,7 @@ model Workspace {
   conversations Conversation[]
   messages  Message[]
   reactions Reaction[]
+  files     File[]
 }
 
 model Member {
@@ -72,6 +73,8 @@ model Channel {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
 
   @@index([workspaceId])
 }
@@ -108,6 +111,7 @@ model Message {
   createdAt        DateTime      @default(now())
 
   reactions        Reaction[]
+  files            File[]        @relation("MessageFiles")
 
   @@index([workspaceId])
   @@index([memberId])
@@ -129,4 +133,27 @@ model Reaction {
   @@index([messageId])
   @@index([memberId])
   @@unique([messageId, memberId, value])
+}
+
+model File {
+  id          String   @id @default(cuid())
+  filename    String
+  mimeType    String
+  size        Int
+  key         String   @unique
+  url         String
+  uploadedBy  String
+  workspaceId String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  uploader    User     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  messages    Message[] @relation("MessageFiles")
+  
+  @@index([uploadedBy])
+  @@index([workspaceId])
+  @@index([createdAt])
 }

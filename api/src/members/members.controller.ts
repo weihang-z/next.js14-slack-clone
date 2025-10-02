@@ -6,13 +6,24 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { CurrentUserId } from 'src/auth/current-user.decorator';
+import { JwtAuthGuard } from 'src/auth/jwt.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('members')
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
+
+  @Post('current')
+  getCurrent(
+    @Body() data: { workspaceId: string },
+    @CurrentUserId() userId: string,
+  ) {
+    return this.membersService.getCurrent(data.workspaceId, userId);
+  }
 
   @Post('list')
   getAll(

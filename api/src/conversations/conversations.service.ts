@@ -12,6 +12,7 @@ export class ConversationsService {
     const other = await this.prisma.member.findUnique({
       where: { id: memberId },
     });
+    // check if current member is in the workspace
     if (!current || !other) throw new NotFoundException('Member not found');
     const existing = await this.prisma.conversation.findFirst({
       where: {

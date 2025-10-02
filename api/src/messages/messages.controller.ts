@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
@@ -17,13 +17,17 @@ export class MessagesController {
   }
 
   @Post('list')
-  getList(@Body() data: GetListDto & { workspaceId: string }, @CurrentUserId() userId: string) {
+  async getList(@Body() data: GetListDto, @CurrentUserId() userId: string) {
     return this.messagesService.list(data.workspaceId, userId, data);
   }
 
   @Get(':id')
-  getById(@Param('id') messageId: string, @Body() data: { workspaceId: string }, @CurrentUserId() userId: string) {
-    return this.messagesService.getById(data.workspaceId, messageId, userId);
+  getById(
+    @Param('id') messageId: string,
+    @Query('workspaceId') workspaceId: string,
+    @CurrentUserId() userId: string,
+  ) {
+    return this.messagesService.getById(workspaceId, messageId, userId);
   }
 
   @Patch(':id')

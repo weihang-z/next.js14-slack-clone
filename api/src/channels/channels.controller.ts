@@ -9,8 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ChannelsService } from './channels.service';
-import { CreateChannelDto } from './dto/create-channel.dto';
-import { UpdateChannelDto } from './dto/update-channel.dto';
+import { CreateAndUpdateChannelDto } from './dto/create-channel.dto';
 import { JwtAuthGuard } from 'src/auth/jwt.guard';
 import { CurrentUserId } from 'src/auth/current-user.decorator';
 
@@ -21,7 +20,7 @@ export class ChannelsController {
 
   @Post('create')
   create(
-    @Body() data: CreateChannelDto & { workspaceId: string },
+    @Body() data: CreateAndUpdateChannelDto,
     @CurrentUserId() userId: string,
   ) {
     return this.channelsService.create(data.workspaceId, data, userId);
@@ -40,11 +39,10 @@ export class ChannelsController {
   @Patch(':id')
   update(
     @Param('id') channelId: string,
-    @Body() updateData: UpdateChannelDto & { workspaceId: string },
+    @Body() updateData: CreateAndUpdateChannelDto,
     @CurrentUserId() userId: string,
   ) {
     return this.channelsService.update(
-      updateData.workspaceId,
       channelId,
       updateData,
       userId,

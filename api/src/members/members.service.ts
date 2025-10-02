@@ -6,6 +6,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class MembersService {
   constructor(private prisma: PrismaService) {}
 
+  async getCurrent(workspaceId: string, userId: string) {
+    return this.prisma.member.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
+      include: {
+        user: {
+          select: { id: true, email: true, name: true, image: true },
+        },
+      },
+    });
+  }
+
 
   async getAll(workspaceId: string, userId: string) {
     const members = await this.prisma.member.findMany({
@@ -66,7 +77,7 @@ export class MembersService {
       throw new NotFoundException('Member not found');
     }
 
-    await this.prisma.$transaction(async (tx: PrismaClient) => {
+    await this.prisma.$transaction(async (tx) => {
       await tx.reaction.deleteMany({ where: { memberId: id } });
       await tx.message.deleteMany({ where: { memberId: id } });
       await tx.conversation.deleteMany({
